@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title><%= title %></title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .dashboard-card {
+            transition: transform 0.2s;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .dashboard-card:hover {
+            transform: translateY(-5px);
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+        }
+        .quick-action-btn {
+            border-radius: 50px;
+            padding: 12px 24px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-success">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-utensils"></i> Slimme Recepten
+            </a>
+            
+            <div class="navbar-nav ms-auto">
+                <div class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle text-white" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-user"></i> <%= user.email %>
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="/dashboard/profile-edit">Profiel bewerken</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <form action="/auth/logout" method="POST" class="d-inline">
+                                <button type="submit" class="dropdown-item">Uitloggen</button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Flash Messages -->
+        <% if (messages.error && messages.error.length > 0) { %>
+            <div class="alert alert-danger alert-dismissible fade show">
+                <%= messages.error[0] %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <% } %>
+        <% if (messages.success && messages.success.length > 0) { %>
+            <div class="alert alert-success alert-dismissible fade show">
+                <%= messages.success[0] %>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        <% } %>
+
+        <!-- Welcome Section -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card stat-card">
+                    <div class="card-body text-center">
+                        <h2><i class="fas fa-home"></i> Welkom terug!</h2>
+                        <p class="mb-0">Klaar om nieuwe recepten te ontdekken?</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h4>Snelle acties</h4>
+                <div class="d-flex flex-wrap gap-2">
+                    <button class="btn btn-primary quick-action-btn" onclick="getRecipeRecommendations()">
+                        <i class="fas fa-magic"></i> Recepten zoeken
+                    </button>
+                    <a href="#" class="btn btn-success quick-action-btn" data-bs-toggle="modal" data-bs-target="#addIngredientModal">
+                        <i class="fas fa-plus"></i> Ingrediënt toevoegen
+                    </a>
+                    <button class="btn btn-info quick-action-btn" onclick="viewBonusDeals()">
+                        <i class="fas fa-tags"></i> Bonus deals
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Grid -->
+        <div class="row">
+            <!-- Fridge Items -->
+            <div class="col-md-6 mb-4">
+                <div class="card dashboard-card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5><i class="fas fa-refrigerator text-info"></i> Mijn Koelkast</h5>
+                        <span class="badge bg-info"><%= fridgeItems.length %> items</span>
+                    </div>
+                    <div class="card-body">
+                        <% if (fridgeItems.length > 0) { %>
+                            <div class="list-group list-group-flush">
+                                <% fridgeItems.forEach(item => { %>
+                                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span><%= item.name %></span>
+                                        <small class="text-muted"><%= item.quantity %></small>
+                                    </div>
+                                <% }) %>
+                            </div>
+                            <div class="text-center mt-3">
+                                <a href="#" class="btn btn-outline-info btn-sm" onclick="manageFridge()">Alle items bekijken</a>
+                            </div>
+                        <% } else { %>
+                            <div class="text-center text-muted">
+                                <i class="fas fa-refrigerator fa-3x mb-3"></i>
+                                <p>Je koelkast is nog leeg</p>
+                                <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#addIngredientModal">
+                                    Eerste ingrediënt toevoegen
+                                </button>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Recommendations -->
+            <div class="col-md-6 mb-4">
+                <div class="card dashboard-card h-100">
+                    <div class="card-header">
+                        <h5><i class="fas fa-utensils text-warning"></i> Recente Recepten</h5>
+                    </div>
+                    <div class="card-body">
+                        <% if (recentRecommendations.length > 0) { %>
+                            <div class="list-group list-group-flush">
+                                <% recentRecommendations.forEach(rec => { %>
+                                    <div class="list-group-item">
+                                        <div class="d-flex align-items-center">
+                                            <% if (rec.image_url) { %>
+                                                <img src="<%= rec.image_url %>" alt="<%= rec.title %>" class="rounded me-3" style="width: 50px; height: 50px; object-fit: cover;">
+                                            <% } %>
+                                            <div class="flex-grow-1">
+                                                <h6 class="mb-1"><%= rec.title %></h6>
+                                                <small class="text-muted">
+                                                    <%= new Date(rec.recommended_at).toLocaleDateString('nl-NL') %>
+                                                    <% if (rec.user_rating) { %>
+                                                        - <span class="text-warning">
+                                                            <% for(let i = 0; i < rec.user_rating; i++) { %>★<% } %>
+                                                        </span>
+                                                    <% } %>
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <% }) %>
+                            </div>
+                        <% } else { %>
+                            <div class="text-center text-muted">
+                                <i class="fas fa-utensils fa-3x mb-3"></i>
+                                <p>Nog geen receptaanbevelingen</p>
+                                <button class="btn btn-warning" onclick="getRecipeRecommendations()">
+                                    Recepten zoeken
+                                </button>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Shopping Lists -->
+            <div class="col-md-12 mb-4">
+                <div class="card dashboard-card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5><i class="fas fa-shopping-cart text-danger"></i> Boodschappenlijsten</h5>
+                        <span class="badge bg-danger"><%= shoppingLists.length %> lijsten</span>
+                    </div>
+                    <div class="card-body">
+                        <% if (shoppingLists.length > 0) { %>
+                            <div class="row">
+                                <% shoppingLists.forEach(list => { %>
+                                    <div class="col-md-4 mb-3">
+                                        <div class="card">
+                                            <div class="card-body">
+                                                <h6 class="card-title"><%= list.name %></h6>
+                                                <p class="card-text">
+                                                    <small class="text-muted">
+                                                        <%= list.item_count %> items - 
+                                                        <%= new Date(list.created_at).toLocaleDateString('nl-NL') %>
+                                                    </small>
+                                                </p>
+                                                <button class="btn btn-outline-danger btn-sm" onclick="viewShoppingList(<%= list.id %>)">
+                                                    Bekijken
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                <% }) %>
+                            </div>
+                        <% } else { %>
+                            <div class="text-center text-muted">
+                                <i class="fas fa-shopping-cart fa-3x mb-3"></i>
+                                <p>Nog geen boodschappenlijsten</p>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Ingredient Modal -->
+    <div class="modal fade" id="addIngredientModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Ingrediënt toevoegen</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addIngredientForm">
+                        <div class="mb-3">
+                            <label for="ingredientName" class="form-label">Naam</label>
+                            <input type="text" class="form-control" id="ingredientName" required>
+                            <div id="ingredientSuggestions" class="list-group mt-2" style="display: none;"></div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="ingredientQuantity" class="form-label">Hoeveelheid</label>
+                            <input type="text" class="form-control" id="ingredientQuantity" value="1">
+                        </div>
+                        <div class="mb-3">
+                            <label for="ingredientExpiry" class="form-label">Vervaldatum (optioneel)</label>
+                            <input type="date" class="form-control" id="ingredientExpiry">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuleren</button>
+                    <button type="button" class="btn btn-primary" onclick="addIngredient()">Toevoegen</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Ingredient autocomplete
+        let debounceTimer;
+        document.getElementById('ingredientName').addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            const query = this.value;
+            
+            if (query.length < 2) {
+                document.getElementById('ingredientSuggestions').style.display = 'none';
+                return;
+            }
+
+            debounceTimer = setTimeout(() => {
+                fetch(`/api/fridge/suggestions?q=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(suggestions => {
+                        const suggestionsDiv = document.getElementById('ingredientSuggestions');
+                        suggestionsDiv.innerHTML = '';
+                        
+                        if (suggestions.length > 0) {
+                            suggestions.forEach(suggestion => {
+                                const item = document.createElement('button');
+                                item.className = 'list-group-item list-group-item-action';
+                                item.textContent = suggestion;
+                                item.onclick = () => {
+                                    document.getElementById('ingredientName').value = suggestion;
+                                    suggestionsDiv.style.display = 'none';
+                                };
+                                suggestionsDiv.appendChild(item);
+                            });
+                            suggestionsDiv.style.display = 'block';
+                        } else {
+                            suggestionsDiv.style.display = 'none';
+                        }
+                    });
+            }, 300);
+        });
+
+        function addIngredient() {
+            const name = document.getElementById('ingredientName').value;
+            const quantity = document.getElementById('ingredientQuantity').value;
+            const expiryDate = document.getElementById('ingredientExpiry').value;
+
+            if (!name) {
+                alert('Vul een ingrediënt naam in');
+                return;
+            }
+
+            fetch('/api/fridge', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    name,
+                    quantity,
+                    expiryDate: expiryDate || null
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Er is een fout opgetreden');
+            });
+        }
+
+        function getRecipeRecommendations() {
+            window.location.href = '/recipes.html';
+        }
+
+        function manageFridge() {
+            window.location.href = '/fridge.html';
+        }
+
+        function viewBonusDeals() {
+            window.location.href = '/bonus.html';
+        }
+
+        function viewShoppingList(id) {
+            window.location.href = `/shopping.html?list=${id}`;
+        }
+    </script>
+</body>
+</html>

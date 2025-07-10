@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Receptaanbevelingen - Slimme Recepten</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .recipe-card {
+            transition: transform 0.2s;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .recipe-card:hover {
+            transform: translateY(-5px);
+        }
+        .recipe-image {
+            height: 200px;
+            object-fit: cover;
+        }
+        .loading-spinner {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-success">
+        <div class="container">
+            <a class="navbar-brand" href="/dashboard">
+                <i class="fas fa-utensils"></i> Slimme Recepten
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link text-white" href="/dashboard">
+                    <i class="fas fa-arrow-left"></i> Terug naar Dashboard
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2><i class="fas fa-magic"></i> Receptaanbevelingen</h2>
+                    <button class="btn btn-primary" onclick="getRecommendations()">
+                        <i class="fas fa-sync-alt"></i> Nieuwe aanbevelingen
+                    </button>
+                </div>
+
+                <!-- Loading Spinner -->
+                <div class="text-center loading-spinner" id="loadingSpinner">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Laden...</span>
+                    </div>
+                    <p class="mt-2">Recepten zoeken...</p>
+                </div>
+
+                <!-- Recipes Container -->
+                <div id="recipesContainer">
+                    <div class="text-center text-muted">
+                        <i class="fas fa-utensils fa-3x mb-3"></i>
+                        <p>Klik op "Nieuwe aanbevelingen" om recepten te zoeken op basis van je koelkastinhoud</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recipe Detail Modal -->
+    <div class="modal fade" id="recipeModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="recipeModalTitle"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="recipeModalBody">
+                    <!-- Recipe details will be loaded here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Sluiten</button>
+                    <button type="button" class="btn btn-success" id="saveRecipeBtn" onclick="toggleSaveRecipe()">
+                        <i class="fas fa-bookmark"></i> Opslaan
+                    </button>
+                    <button type="button" class="btn btn-primary" id="createShoppingListBtn" onclick="createShoppingList()">
+                        <i class="fas fa-shopping-cart"></i> Boodschappenlijst maken
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rating Modal -->
+    <div class="modal fade" id="ratingModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Recept beoordelen</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Rating</label>
+                        <div class="rating-stars">
+                            <i class="fas fa-star" data-rating="1"></i>
+                            <i class="fas fa-star" data-rating="2"></i>
+                            <i class="fas fa-star" data-rating="3"></i>
+                            <i class="fas fa-star" data-rating="4"></i>
+                            <i class="fas fa-star" data-rating="5"></i>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="ratingFeedback" class="form-label">Feedback (optioneel)</label>
+                        <textarea class="form-control" id="ratingFeedback" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuleren</button>
+                    <button type="button" class="btn btn-primary" onclick="submitRating()">Beoordeling opslaan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentRecipeId = null;
+        let currentRating = 0;
+
+        // Load recommendations on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            getRecommendations();
+        });
+
+        function getRecommendations() {
+            const spinner = document.getElementById('loadingSpinner');
+            const container = document.getElementById('recipesContainer');
+            
+            spinner.style.display = 'block';
+            container.innerHTML = '';
+
+            fetch('/api/recipes/recommendations')
+                .then(response => response.json())
+                .then(data => {
+                    spinner.style.display = 'none';
+                    
+                    if (data.recipes && data.recipes.length > 0) {
+                        displayRecipes(data.recipes);
+                    } else {
+                        container.innerHTML = `
+                            <div class="text-center text-muted">
+                                <i class="fas fa-exclamation-circle fa-3x mb-3"></i>
+                                <h4>${data.message || 'Geen recepten gevonden'}</h4>
+                                <p>Voeg meer ingrediënten toe aan je koelkast voor betere aanbevelingen</p>
+                                <a href="/fridge.html" class="btn btn-primary">Koelkast beheren</a>
+                            </div>
+                        `;
+                    }
+                })
+                .catch(error => {
+                    spinner.style.display = 'none';
+                    console.error('Error:', error);
+                    container.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            Er is een fout opgetreden bij het laden van recepten
+                        </div>
+                    `;
+                });
+        }
+
+        function displayRecipes(recipes) {
+            const container = document.getElementById('recipesContainer');
+            
+            const recipesHtml = recipes.map(recipe => `
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card recipe-card h-100">
+                        ${recipe.image_url ? `
+                            <img src="${recipe.image_url}" class="card-img-top recipe-image" alt="${recipe.title}">
+                        ` : `
+                            <div class="card-img-top recipe-image bg-light d-flex align-items-center justify-content-center">
+                                <i class="fas fa-utensils fa-3x text-muted"></i>
+                            </div>
+                        `}
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title">${recipe.title}</h5>
+                            <p class="card-text flex-grow-1">${recipe.description || 'Heerlijk recept om te proberen!'}</p>
+                            <div class="mb-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-clock"></i> ${(recipe.prep_time || 0) + (recipe.cook_time || 0)} min
+                                    <i class="fas fa-users ms-2"></i> ${recipe.servings || 4} porties
+                                    <i class="fas fa-signal ms-2"></i> ${recipe.difficulty || 'medium'}
+                                </small>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-primary btn-sm flex-grow-1" onclick="viewRecipe(${recipe.id})">
+                                    <i class="fas fa-eye"></i> Bekijken
+                                </button>
+                                <button class="btn btn-outline-warning btn-sm" onclick="rateRecipe(${recipe.id})">
+                                    <i class="fas fa-star"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+
+            container.innerHTML = `<div class="row">${recipesHtml}</div>`;
+        }
+
+        function viewRecipe(recipeId) {
+            currentRecipeId = recipeId;
+            
+            fetch(`/api/recipes/${recipeId}`)
+                .then(response => response.json())
+                .then(recipe => {
+                    document.getElementById('recipeModalTitle').textContent = recipe.title;
+                    
+                    const ingredients = Array.isArray(recipe.ingredients) ? recipe.ingredients : [];
+                    const ingredientsList = ingredients.map(ing => `<li>${ing}</li>`).join('');
+                    
+                    document.getElementById('recipeModalBody').innerHTML = `
+                        ${recipe.image_url ? `<img src="${recipe.image_url}" class="img-fluid mb-3 rounded" alt="${recipe.title}">` : ''}
+                        <p><strong>Beschrijving:</strong> ${recipe.description || 'Geen beschrijving beschikbaar'}</p>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <strong>Voorbereidingstijd:</strong> ${recipe.prep_time || 0} min
+                            </div>
+                            <div class="col-md-4">
+                                <strong>Kooktijd:</strong> ${recipe.cook_time || 0} min
+                            </div>
+                            <div class="col-md-4">
+                                <strong>Porties:</strong> ${recipe.servings || 4}
+                            </div>
+                        </div>
+                        <h6>Ingrediënten:</h6>
+                        <ul>${ingredientsList}</ul>
+                        <h6>Bereidingswijze:</h6>
+                        <div style="white-space: pre-line;">${recipe.instructions || 'Geen instructies beschikbaar'}</div>
+                    `;
+                    
+                    // Update save button
+                    const saveBtn = document.getElementById('saveRecipeBtn');
+                    if (recipe.is_saved) {
+                        saveBtn.innerHTML = '<i class="fas fa-bookmark"></i> Opgeslagen';
+                        saveBtn.classList.remove('btn-success');
+                        saveBtn.classList.add('btn-warning');
+                    } else {
+                        saveBtn.innerHTML = '<i class="fas fa-bookmark"></i> Opslaan';
+                        saveBtn.classList.remove('btn-warning');
+                        saveBtn.classList.add('btn-success');
+                    }
+                    
+                    new bootstrap.Modal(document.getElementById('recipeModal')).show();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Fout bij het laden van recept details');
+                });
+        }
+
+        function toggleSaveRecipe() {
+            if (!currentRecipeId) return;
+            
+            fetch(`/api/recipes/${currentRecipeId}/save`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                const saveBtn = document.getElementById('saveRecipeBtn');
+                if (data.saved) {
+                    saveBtn.innerHTML = '<i class="fas fa-bookmark"></i> Opgeslagen';
+                    saveBtn.classList.remove('btn-success');
+                    saveBtn.classList.add('btn-warning');
+                } else {
+                    saveBtn.innerHTML = '<i class="fas fa-bookmark"></i> Opslaan';
+                    saveBtn.classList.remove('btn-warning');
+                    saveBtn.classList.add('btn-success');
+                }
+                
+                // Show toast notification
+                showToast(data.message);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Fout bij het opslaan van recept');
+            });
+        }
+
+        function createShoppingList() {
+            if (!currentRecipeId) return;
+            
+            fetch(`/api/shopping/lists/from-recipe/${currentRecipeId}`, {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    showToast(data.message);
+                    bootstrap.Modal.getInstance(document.getElementById('recipeModal')).hide();
+                    
+                    // Redirect to shopping list
+                    setTimeout(() => {
+                        window.location.href = `/shopping.html?list=${data.shoppingListId}`;
+                    }, 1000);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Fout bij het maken van boodschappenlijst');
+            });
+        }
+
+        function rateRecipe(recipeId) {
+            currentRecipeId = recipeId;
+            currentRating = 0;
+            
+            // Reset stars
+            document.querySelectorAll('.rating-stars i').forEach(star => {
+                star.classList.remove('text-warning');
+                star.classList.add('text-muted');
+            });
+            
+            document.getElementById('ratingFeedback').value = '';
+            new bootstrap.Modal(document.getElementById('ratingModal')).show();
+        }
+
+        // Rating stars interaction
+        document.querySelectorAll('.rating-stars i').forEach(star => {
+            star.addEventListener('click', function() {
+                currentRating = parseInt(this.dataset.rating);
+                
+                document.querySelectorAll('.rating-stars i').forEach((s, index) => {
+                    if (index < currentRating) {
+                        s.classList.remove('text-muted');
+                        s.classList.add('text-warning');
+                    } else {
+                        s.classList.remove('text-warning');
+                        s.classList.add('text-muted');
+                    }
+                });
+            });
+        });
+
+        function submitRating() {
+            if (!currentRecipeId || currentRating === 0) {
+                alert('Selecteer een rating');
+                return;
+            }
+            
+            const feedback = document.getElementById('ratingFeedback').value;
+            
+            fetch(`/api/recipes/${currentRecipeId}/rate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    rating: currentRating,
+                    feedback: feedback
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    showToast(data.message);
+                    bootstrap.Modal.getInstance(document.getElementById('ratingModal')).hide();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Fout bij het opslaan van beoordeling');
+            });
+        }
+
+        function showToast(message) {
+            // Simple toast notification
+            const toast = document.createElement('div');
+            toast.className = 'toast align-items-center text-white bg-success border-0 position-fixed top-0 end-0 m-3';
+            toast.style.zIndex = '9999';
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">${message}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            
+            document.body.appendChild(toast);
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+            
+            toast.addEventListener('hidden.bs.toast', () => {
+                document.body.removeChild(toast);
+            });
+        }
+    </script>
+</body>
+</html>
