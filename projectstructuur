@@ -1,0 +1,5 @@
+recept_crew/
+├── main.py                # CrewAI setup
+├── ah_bonus_scraper.py   # Webscraper
+├── requirements.txt       # Afhankelijkheden
+└── .env 
