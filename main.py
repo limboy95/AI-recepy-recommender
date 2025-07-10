@@ -1,6 +1,7 @@
 from crewai import Agent, Task, Crew
 from langchain.llms import OpenAI
 from bonus_cache import get_bonus_promoties
+from ingredienten import kies_ingredienten
 from dotenv import load_dotenv
 import os
 
@@ -21,12 +22,8 @@ ah_promoties = get_bonus_promoties()
 promotie_tekst = "\n".join(ah_promoties[:10])
 
 # 4. Wat er al in de koelkast zit
-gekoelde_ingredienten = [
-    "broccoli",
-    "roomkaas",
-    "citroen",
-    "geraspte kaas"
-]
+print("Kies welke ingrediënten je nog in de koelkast hebt staan:")
+gekoelde_ingredienten = kies_ingredienten()
 
 # 5. Gebruikersvoorkeur
 voorkeur = "Gezond, snel klaar, vegetarisch en onder €10"
