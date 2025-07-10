@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8 mx-auto text-center">
+        <h1 class="display-4 mb-4">
+            <i class="fas fa-brain text-success"></i>
+            Slimme Recepten & Boodschappen Assistent
+        </h1>
+        <p class="lead mb-5">
+            Ontdek heerlijke recepten op basis van wat je in huis hebt, 
+            profiteer van AH bonus aanbiedingen en maak slimme boodschappenlijstjes!
+        </p>
+        
+        {% if not user.is_authenticated %}
+            <div class="row mb-5">
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-user-plus fa-3x text-primary mb-3"></i>
+                            <h5 class="card-title">Nieuwe gebruiker?</h5>
+                            <p class="card-text">Registreer je gratis en begin direct met slimme receptaanbevelingen!</p>
+                            <a href="{% url 'account_signup' %}" class="btn btn-primary">Registreren</a>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="card h-100">
+                        <div class="card-body text-center">
+                            <i class="fas fa-sign-in-alt fa-3x text-success mb-3"></i>
+                            <h5 class="card-title">Al een account?</h5>
+                            <p class="card-text">Log in om je persoonlijke dashboard te bekijken.</p>
+                            <a href="{% url 'account_login' %}" class="btn btn-success">Inloggen</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="mb-5">
+                <a href="{% url 'dashboard' %}" class="btn btn-primary btn-lg">
+                    <i class="fas fa-tachometer-alt"></i> Ga naar Dashboard
+                </a>
+            </div>
+        {% endif %}
+        
+        <div class="row">
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-refrigerator fa-3x text-info mb-3"></i>
+                        <h5 class="card-title">Koelkast Beheer</h5>
+                        <p class="card-text">Voer in wat je in huis hebt en krijg passende receptaanbevelingen.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-utensils fa-3x text-warning mb-3"></i>
+                        <h5 class="card-title">Slimme Recepten</h5>
+                        <p class="card-text">Recepten aangepast aan jouw voorkeuren, allergieën en dieetwensen.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <i class="fas fa-shopping-cart fa-3x text-danger mb-3"></i>
+                        <h5 class="card-title">AH Bonus Deals</h5>
+                        <p class="card-text">Automatische integratie met Albert Heijn bonus aanbiedingen.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
