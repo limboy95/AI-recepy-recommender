@@ -1,7 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 
-def scrape_ah_bonus(url="https://www.ah.nl/bonus"):
+def scrape_ah_bonus(url="https://www.ah.be/bonus"):
     headers = {
         "User-Agent": "Mozilla/5.0"
     }

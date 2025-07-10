@@ -1,6 +1,6 @@
 from crewai import Agent, Task, Crew
 from langchain.llms import OpenAI
-from ah_bonus_scraper import scrape_ah_bonus
+from bonus_cache import get_bonus_promoties
 from dotenv import load_dotenv
 import os
 
@@ -17,7 +17,7 @@ print("✅ OpenAI API key geladen:", api_key[:5] + "...")
 
 
 # 3. AH promoties ophalen
-ah_promoties = scrape_ah_bonus()
+ah_promoties = get_bonus_promoties()
 promotie_tekst = "\n".join(ah_promoties[:10])
 
 # 4. Wat er al in de koelkast zit
